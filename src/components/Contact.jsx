@@ -3,9 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mail, MapPin, Phone, Clock, Send } from "lucide-react";
 import { FaLinkedin } from "react-icons/fa";
 
-// Backend API URL (set VITE_BACKEND_URL in Netlify env vars once backend is deployed)
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-// Web3Forms fallback for email notifications
+// Web3Forms key for email notifications (optional, set in Netlify env vars)
 const WEB3FORMS_KEY = import.meta.env.VITE_WEB3FORMS_KEY;
 
 const Contact = () => {
@@ -27,9 +25,9 @@ const Contact = () => {
     try {
       let success = false;
 
-      // ── Primary: save to PostgreSQL via backend ────────────────────────────
-      if (BACKEND_URL) {
-        const response = await fetch(`${BACKEND_URL}/api/contact`, {
+      // ── Primary: Netlify serverless function → saves to PostgreSQL ─────────
+      try {
+        const response = await fetch("/api/contact", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -42,31 +40,37 @@ const Contact = () => {
           }),
         });
         const result = await response.json();
-        if (result.success) success = true;
-        else console.error("Backend error:", result.error);
+        if (result.success) {
+          success = true;
+        } else {
+          console.error("DB save error:", result.error);
+        }
+      } catch (dbErr) {
+        console.error("DB fetch failed:", dbErr.message);
       }
 
-      // ── Fallback / parallel: Web3Forms email notification ─────────────────
+      // ── Secondary: Web3Forms → email notification to inbox ─────────────────
       if (WEB3FORMS_KEY) {
-        const payload = new FormData();
-        payload.append("access_key", WEB3FORMS_KEY);
-        payload.append("name", formData.name);
-        payload.append("email", formData.email);
-        payload.append("message", formData.message);
-        payload.append("subject", `New message from ${formData.name} — Portfolio Contact`);
-        payload.append("from_name", "Tanveer Kakar Portfolio");
+        try {
+          const payload = new FormData();
+          payload.append("access_key", WEB3FORMS_KEY);
+          payload.append("name", formData.name);
+          payload.append("email", formData.email);
+          payload.append("message", formData.message);
+          payload.append("subject", `New message from ${formData.name} — Portfolio Contact`);
+          payload.append("from_name", "Tanveer Kakar Portfolio");
 
-        const w3res = await fetch("https://api.web3forms.com/submit", {
-          method: "POST",
-          body: payload,
-        });
-        const w3data = await w3res.json();
-        if (w3data.success) success = true;
-        else console.error("Web3Forms error:", w3data.message);
+          const w3res = await fetch("https://api.web3forms.com/submit", {
+            method: "POST",
+            body: payload,
+          });
+          const w3data = await w3res.json();
+          if (w3data.success) success = true;
+          else console.error("Web3Forms error:", w3data.message);
+        } catch (w3Err) {
+          console.error("Web3Forms failed:", w3Err.message);
+        }
       }
-
-      // If neither is configured yet, default success so UX doesn't break
-      if (!BACKEND_URL && !WEB3FORMS_KEY) success = true;
 
       if (success) {
         setSubmitStatus('success');
