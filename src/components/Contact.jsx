@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Mail, MapPin, Phone, Clock, Send } from "lucide-react";
 import { FaLinkedin } from "react-icons/fa";
 
+const WEB3FORMS_KEY = import.meta.env.VITE_WEB3FORMS_KEY || "YOUR_ACCESS_KEY_HERE";
+
 const Contact = () => {
   const [formData, setFormData] = useState({
     name: "",
@@ -20,17 +22,17 @@ const Contact = () => {
     setSubmitStatus(null);
 
     try {
-      const response = await fetch("http://localhost:5000/api/contact", {
+      const payload = new FormData();
+      payload.append("access_key", WEB3FORMS_KEY);
+      payload.append("name", formData.name);
+      payload.append("email", formData.email);
+      payload.append("message", formData.message);
+      payload.append("subject", `New message from ${formData.name} — Portfolio Contact`);
+      payload.append("from_name", "Tanveer Kakar Portfolio");
+
+      const response = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          message: formData.message,
-        }),
+        body: payload,
       });
 
       const result = await response.json();
@@ -41,7 +43,7 @@ const Contact = () => {
         setTimeout(() => setSubmitStatus(null), 5000);
       } else {
         setSubmitStatus('error');
-        console.error("Form submission failed:", result.error);
+        console.error("Form submission failed:", result.message);
         setTimeout(() => setSubmitStatus(null), 5000);
       }
     } catch (error) {
