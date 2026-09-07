@@ -1,42 +1,42 @@
-const { Pool } = require("pg");
+const postgres = require("postgres");
 
-// Reuse pool across warm invocations
-let pool;
+// Cache connection across warm invocations
+let sql;
 
-function getPool() {
-  if (!pool) {
+function getDb() {
+  if (!sql) {
     const connectionString = process.env.DATABASE_URL;
     if (!connectionString) {
-      throw new Error("DATABASE_URL environment variable is not set.");
+      throw new Error("DATABASE_URL environment variable is not set in Netlify.");
     }
-    pool = new Pool({
-      connectionString,
-      ssl: { rejectUnauthorized: false }, // required for Supabase / hosted Postgres
-      max: 1, // keep connections lean in serverless
+    sql = postgres(connectionString, {
+      ssl: "require",   // Supabase requires SSL
+      max: 1,           // one connection per function instance
+      idle_timeout: 20,
+      connect_timeout: 10,
     });
   }
-  return pool;
-}
-
-// Ensure the table exists (runs once per cold start)
-async function ensureTable(client) {
-  await client.query(`
-    CREATE TABLE IF NOT EXISTS contact_messages (
-      id           SERIAL PRIMARY KEY,
-      name         VARCHAR(255) NOT NULL,
-      email        VARCHAR(255) NOT NULL,
-      message      TEXT NOT NULL,
-      submitted_at TIMESTAMP DEFAULT NOW()
-    )
-  `);
+  return sql;
 }
 
 exports.handler = async (event) => {
+  const headers = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+  };
+
+  // Handle CORS preflight
+  if (event.httpMethod === "OPTIONS") {
+    return { statusCode: 200, headers, body: "" };
+  }
+
   // Only allow POST
   if (event.httpMethod !== "POST") {
     return {
       statusCode: 405,
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ success: false, error: "Method not allowed" }),
     };
   }
@@ -48,47 +48,53 @@ exports.handler = async (event) => {
   } catch {
     return {
       statusCode: 400,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ success: false, error: "Invalid JSON body" }),
+      headers,
+      body: JSON.stringify({ success: false, error: "Invalid request body." }),
     };
   }
 
   // Validate
-  if (!name || !email || !message) {
+  if (!name?.trim() || !email?.trim() || !message?.trim()) {
     return {
       statusCode: 400,
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ success: false, error: "All fields are required." }),
     };
   }
-
   if (name.length > 255 || email.length > 255) {
     return {
       statusCode: 400,
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({ success: false, error: "Input too long." }),
     };
   }
 
-  // Save to PostgreSQL
-  let client;
   try {
-    client = await getPool().connect();
-    await ensureTable(client);
+    const db = getDb();
 
-    const result = await client.query(
-      `INSERT INTO contact_messages (name, email, message)
-       VALUES ($1, $2, $3)
-       RETURNING id, submitted_at`,
-      [name, email, message]
-    );
+    // Ensure table exists
+    await db`
+      CREATE TABLE IF NOT EXISTS contact_messages (
+        id           SERIAL PRIMARY KEY,
+        name         VARCHAR(255) NOT NULL,
+        email        VARCHAR(255) NOT NULL,
+        message      TEXT NOT NULL,
+        submitted_at TIMESTAMP DEFAULT NOW()
+      )
+    `;
 
-    const row = result.rows[0];
-    console.log(`📩 Saved message from ${name} (${email}) — ID: ${row.id}`);
+    // Insert row
+    const [row] = await db`
+      INSERT INTO contact_messages (name, email, message)
+      VALUES (${name.trim()}, ${email.trim()}, ${message.trim()})
+      RETURNING id, submitted_at
+    `;
+
+    console.log(`✅ Saved contact from ${name} (${email}) — ID: ${row.id}`);
 
     return {
       statusCode: 201,
-      headers: { "Content-Type": "application/json" },
+      headers,
       body: JSON.stringify({
         success: true,
         message: "Message saved successfully!",
@@ -100,10 +106,12 @@ exports.handler = async (event) => {
     console.error("❌ DB error:", err.message);
     return {
       statusCode: 500,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ success: false, error: "Failed to save message. Please try again." }),
+      headers,
+      body: JSON.stringify({
+        success: false,
+        error: "Database error. Please try again.",
+        detail: err.message,   // visible in Netlify function logs
+      }),
     };
-  } finally {
-    if (client) client.release();
   }
 };

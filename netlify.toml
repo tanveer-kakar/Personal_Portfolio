@@ -4,7 +4,7 @@
   functions = "netlify/functions"
 
 [functions]
-  node_bundler = "esbuild"
+  node_bundler = "zisi"
 
 # Redirect /api/contact → Netlify function so the frontend
 # calls a clean URL instead of /.netlify/functions/contact

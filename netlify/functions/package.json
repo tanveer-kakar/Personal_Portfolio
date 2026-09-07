@@ -4,6 +4,6 @@
   "description": "Dependencies for Netlify serverless functions",
   "main": "contact.js",
   "dependencies": {
-    "pg": "^8.11.3"
+    "postgres": "^3.4.4"
   }
 }
