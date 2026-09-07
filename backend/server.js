@@ -6,18 +6,44 @@ const { Pool } = require("pg");
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors({ origin: "http://localhost:5173" }));
+// Allowed origins — localhost for dev, your Netlify URL for production
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:4173",
+  process.env.FRONTEND_URL, // e.g. https://your-site.netlify.app
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (Postman, curl, etc.)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS blocked: ${origin}`));
+      }
+    },
+    methods: ["GET", "POST"],
+    allowedHeaders: ["Content-Type", "Accept"],
+  })
+);
+
 app.use(express.json());
 
 // PostgreSQL connection pool
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-});
+// Supports both individual env vars AND a single DATABASE_URL (Render / Supabase / Railway)
+const pool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false }, // required by Render/Supabase hosted Postgres
+    })
+  : new Pool({
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT || 5432,
+      database: process.env.DB_NAME,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+    });
 
 // Test DB connection on startup
 pool.connect((err, client, release) => {
@@ -28,6 +54,17 @@ pool.connect((err, client, release) => {
     release();
   }
 });
+
+// Ensure table exists on startup
+pool.query(`
+  CREATE TABLE IF NOT EXISTS contact_messages (
+    id           SERIAL PRIMARY KEY,
+    name         VARCHAR(255) NOT NULL,
+    email        VARCHAR(255) NOT NULL,
+    message      TEXT NOT NULL,
+    submitted_at TIMESTAMP DEFAULT NOW()
+  )
+`).catch((err) => console.error("❌ Table creation error:", err.message));
 
 // POST /api/contact — Save message to DB
 app.post("/api/contact", async (req, res) => {
@@ -44,8 +81,8 @@ app.post("/api/contact", async (req, res) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO contact_messages (name, email, message) 
-       VALUES ($1, $2, $3) 
+      `INSERT INTO contact_messages (name, email, message)
+       VALUES ($1, $2, $3)
        RETURNING id, submitted_at`,
       [name, email, message]
     );
