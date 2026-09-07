@@ -1,16 +1,33 @@
-# React + Vite
+# Personal Portfolio — Tanveer Kakar
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, responsive personal portfolio website designed to showcase my experience, skills, projects, and achievements as a Data Engineer. Built with a strong focus on user experience, performance, and accessibility.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend:** React 19, Vite 8, Tailwind CSS v4, Framer Motion
+- **Languages:** JavaScript (JSX)
+- **Icons:** Lucide React, React Icons
+- **Backend (Contact Form):** Node.js / Express
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Animated loader and smooth scroll navigation
+- Hero section with social links
+- Work experience, skills, projects, education, and certifications sections
+- Contact form with backend email integration
+- Light/Dark mode toggle
+- Privacy Policy and Terms of Service pages
+- Fully responsive across all screen sizes
 
-## Expanding the ESLint configuration
+## Getting Started
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm install
+npm run dev
+```
+
+## Build
+
+```bash
+npm run build
+```
