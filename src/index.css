@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Inter:wght@400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+:root {
+  --color-primary: #00d09c;
+  --color-secondary: #00a87d;
+  --color-dark: #020202;
+  --color-card: #0c0c0c;
+  --color-textPrimary: #FFFFFF;
+  --color-textSecondary: #9ca3af;
+  --glass-border: rgba(255, 255, 255, 0.05);
+  --glass-bg: rgba(12, 12, 12, 0.8);
+}
+
+:root[data-theme="light"] {
+  --color-primary: #16A34A;
+  --color-secondary: #15803D;
+  --color-dark: #F8FAFC;
+  --color-card: #FFFFFF;
+  --color-textPrimary: #0F172A;
+  --color-textSecondary: #475569;
+  --glass-border: rgba(0, 0, 0, 0.1);
+  --glass-bg: rgba(255, 255, 255, 0.8);
+}
+
+@theme {
+  --color-primary: var(--color-primary);
+  --color-secondary: var(--color-secondary);
+  --color-dark: var(--color-dark);
+  --color-card: var(--color-card);
+  --color-textPrimary: var(--color-textPrimary);
+  --color-textSecondary: var(--color-textSecondary);
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Playfair Display', serif;
+  --font-signature: 'Dancing Script', cursive;
+}
+
+@layer utilities {
+  .glass-card {
+    background-color: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--radius-2xl);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 6rem;
+}
+
+body {
+  background-color: var(--color-dark);
+  color: var(--color-textPrimary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background-color: var(--color-primary);
+  color: #000;
+}
